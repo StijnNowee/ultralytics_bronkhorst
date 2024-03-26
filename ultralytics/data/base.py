@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 import psutil
 from torch.utils.data import Dataset
+import matplotlib.pyplot as plt
 
 from ultralytics.utils import DEFAULT_CFG, LOCAL_RANK, LOGGER, NUM_THREADS, TQDM
 from .utils import HELP_URL, IMG_FORMATS
@@ -97,6 +98,9 @@ class BaseDataset(Dataset):
         # Transforms
         self.transforms = self.build_transforms(hyp=hyp)
 
+        self.directory = os.path.expanduser('~/Documents/Stage/Yolo_trainer/cropped_images/')
+        os.makedirs(self.directory, exist_ok=True)
+
     def get_img_files(self, img_path):
         """Read image files."""
         try:
@@ -145,7 +149,9 @@ class BaseDataset(Dataset):
                 self.labels[i]["cls"][:, 0] = 0
 
     def load_image(self, i, rect_mode=True):
-        """Loads 1 image from dataset index 'i', returns (im, resized hw)."""
+        """Loads 1 image from dataset index 'i', returns (im, cropped hw)."""
+        randomint = np.random.randint(1e6)
+
         im, f, fn = self.ims[i], self.im_files[i], self.npy_files[i]
         if im is None:  # not cached in RAM
             if fn.exists():  # load npy
@@ -159,19 +165,20 @@ class BaseDataset(Dataset):
                 im = cv2.imread(f)  # BGR
             if im is None:
                 raise FileNotFoundError(f"Image Not Found {f}")
-
+            plt.imsave(f'{self.directory}/{randomint}.png', im)
             h0, w0 = im.shape[:2]  # orig hw
-            if rect_mode:  # resize long side to imgsz while maintaining aspect ratio
-                r = self.imgsz / max(h0, w0)  # ratio
-                if r != 1:  # if sizes are not equal
-                    w, h = (min(math.ceil(w0 * r), self.imgsz), min(math.ceil(h0 * r), self.imgsz))
-                    im = cv2.resize(im, (w, h), interpolation=cv2.INTER_LINEAR)
-            elif not (h0 == w0 == self.imgsz):  # resize by stretching image to square imgsz
-                im = cv2.resize(im, (self.imgsz, self.imgsz), interpolation=cv2.INTER_LINEAR)
-
+            if rect_mode:  # crop to imgsz while maintaining aspect ratio
+                if h0 > self.imgsz and w0 > self.imgsz:  # if original size is larger than target size
+                    center = (random.randint(self.imgsz // 2, w0 - self.imgsz // 2),
+                            random.randint(self.imgsz // 2, h0 - self.imgsz // 2))
+                    im = cv2.getRectSubPix(im, (self.imgsz, self.imgsz), center)
+            elif not (h0 == w0 == self.imgsz):  # crop by taking center square of size imgsz
+                center = (w0 // 2, h0 // 2)
+                im = cv2.getRectSubPix(im, (self.imgsz, self.imgsz), center)
+            plt.imsave(f'{self.directory}/{randomint}_cropped.png', im)
             # Add to buffer if training with augmentations
             if self.augment:
-                self.ims[i], self.im_hw0[i], self.im_hw[i] = im, (h0, w0), im.shape[:2]  # im, hw_original, hw_resized
+                self.ims[i], self.im_hw0[i], self.im_hw[i] = im, (h0, w0), im.shape[:2]  # im, hw_original, hw_cropped
                 self.buffer.append(i)
                 if len(self.buffer) >= self.max_buffer_length:
                     j = self.buffer.pop(0)
@@ -180,6 +187,7 @@ class BaseDataset(Dataset):
             return im, (h0, w0), im.shape[:2]
 
         return self.ims[i], self.im_hw0[i], self.im_hw[i]
+
 
     def cache_images(self, cache):
         """Cache images to memory or disk."""
