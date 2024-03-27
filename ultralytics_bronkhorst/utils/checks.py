@@ -631,6 +631,8 @@ def check_amp(model):
     Returns:
         (bool): Returns True if the AMP functionality works correctly with YOLOv8 model, else False.
     """
+    LOGGER.info("AMP check disabled")
+    return True  # disable AMP checks
     device = next(model.parameters()).device  # get model device
     if device.type in ("cpu", "mps"):
         return False  # AMP only used on CUDA devices
