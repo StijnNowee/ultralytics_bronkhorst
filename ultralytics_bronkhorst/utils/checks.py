@@ -638,9 +638,13 @@ def check_amp(model):
     def amp_allclose(m, im):
         """All close FP32 vs AMP results."""
         a = m(im, device=device, verbose=False)[0].boxes.data  # FP32 inference
+        print("fp32 inference done")
         with torch.cuda.amp.autocast(True):
+            print("start amp inference")
             b = m(im, device=device, verbose=False)[0].boxes.data  # AMP inference
+            print("amp inference done")
         del m
+        print("m")
         return a.shape == b.shape and torch.allclose(a, b.float(), atol=0.5)  # close to 0.5 absolute tolerance
 
     im = ASSETS / "bus.jpg"  # image to check
@@ -649,8 +653,11 @@ def check_amp(model):
     warning_msg = "Setting 'amp=True'. If you experience zero-mAP or NaN losses you can disable AMP with amp=False."
     try:
         from ultralytics_bronkhorst import YOLO
-
-        assert amp_allclose(YOLO("yolov8n.pt"), im)
+        print("Before downloading model")
+        model = YOLO("yolov8n.pt")
+        print("After downloading model")
+        assert amp_allclose(model, im)
+        print("After assert")
         LOGGER.info(f"{prefix}checks passed ✅")
     except ConnectionError:
         LOGGER.warning(f"{prefix}checks skipped ⚠️, offline and unable to download YOLOv8n. {warning_msg}")
