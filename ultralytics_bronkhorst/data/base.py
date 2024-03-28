@@ -1,7 +1,6 @@
 # Ultralytics YOLO 🚀, AGPL-3.0 license
 
 import glob
-import math
 import os
 import random
 from copy import deepcopy
@@ -13,7 +12,6 @@ import cv2
 import numpy as np
 import psutil
 from torch.utils.data import Dataset
-import matplotlib.pyplot as plt
 
 from ultralytics_bronkhorst.utils import DEFAULT_CFG, LOCAL_RANK, LOGGER, NUM_THREADS, TQDM
 from .utils import HELP_URL, IMG_FORMATS
@@ -150,8 +148,6 @@ class BaseDataset(Dataset):
 
     def load_image(self, i, rect_mode=True):
         """Loads 1 image from dataset index 'i', returns (im, cropped hw)."""
-        randomint = np.random.randint(1e6)
-
         im, f, fn = self.ims[i], self.im_files[i], self.npy_files[i]
         if im is None:  # not cached in RAM
             if fn.exists():  # load npy
@@ -165,7 +161,6 @@ class BaseDataset(Dataset):
                 im = cv2.imread(f)  # BGR
             if im is None:
                 raise FileNotFoundError(f"Image Not Found {f}")
-            plt.imsave(f'{self.directory}/{randomint}.png', im)
             h0, w0 = im.shape[:2]  # orig hw
             if self.augment:
                 self.ims[i], self.im_hw0[i], self.im_hw[i] = im, (h0, w0), im.shape[:2]  # im, hw_original, hw_cropped
