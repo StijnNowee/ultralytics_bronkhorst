@@ -859,6 +859,9 @@ class Albumentations:
         if len(new["class_labels"]) > 0:  # skip update if no bbox in new im
             labels["cls"] = np.array(new["class_labels"])
             bboxes = np.array(new["bboxes"], dtype=np.float32)
+        else:
+            bboxes = np.zeros((0, 4))
+            labels["cls"] = np.zeros(0)
         labels["instances"].update(bboxes=bboxes)
         return labels
 
